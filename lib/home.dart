@@ -12,17 +12,25 @@ class Home extends StatefulWidget {
 class _HomeState extends State<Home> {
   final double _circleSize = 20;
   late double _xPosition;
-  double _yPosition = 0;
+  final ValueNotifier<double> _yPosition = ValueNotifier<double>(0);
   late double _centerY;
   late Timer timerOnStart;
   Timer? timerOnDown;
   Timer? timerOnUp;
   int taps = 0;
+  late double _screenHeight;
 
   @override
   void initState() {
     super.initState();
     _throwBall();
+    _yPosition.addListener(() => _listenPosition());
+  }
+
+  @override
+  void dispose() {
+    _yPosition.dispose();
+    super.dispose();
   }
 
   @override
@@ -35,29 +43,33 @@ class _HomeState extends State<Home> {
         title: Text(taps.toString()),
         centerTitle: true,
       ),
-      body: SafeArea(
-        child: Stack(
-          children: [
-            GestureDetector(
-              onTapDown: (TapDownDetails details) => _changeDirection(details),
-              child: Container(
-                color: Colors.yellow,
-              ),
-            ),
-            Positioned(
-              left: _xPosition,
-              top: _yPosition,
-              child: Container(
-                width: _circleSize,
-                height: _circleSize,
-                decoration: const BoxDecoration(
-                  color: Colors.red,
-                  shape: BoxShape.circle,
+      body: LayoutBuilder(
+        builder: (BuildContext context, BoxConstraints constraints) {
+          _screenHeight = constraints.maxHeight;
+          return Stack(
+            children: [
+              GestureDetector(
+                onTapDown: (TapDownDetails details) =>
+                    _changeDirection(details),
+                child: Container(
+                  color: Colors.yellow,
                 ),
               ),
-            ),
-          ],
-        ),
+              Positioned(
+                left: _xPosition,
+                top: _yPosition.value,
+                child: Container(
+                  width: _circleSize,
+                  height: _circleSize,
+                  decoration: const BoxDecoration(
+                    color: Colors.red,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
@@ -66,7 +78,7 @@ class _HomeState extends State<Home> {
     const duration = Duration(milliseconds: 10);
     timerOnStart = Timer.periodic(duration, (Timer t) {
       setState(() {
-        _yPosition += 1;
+        _yPosition.value += 1;
       });
     });
   }
@@ -78,14 +90,14 @@ class _HomeState extends State<Home> {
       _cancelTimers();
       timerOnUp = Timer.periodic(duration, (Timer t) {
         setState(() {
-          _yPosition -= 1;
+          _yPosition.value -= 1;
         });
       });
     } else {
       _cancelTimers();
       timerOnDown = Timer.periodic(duration, (Timer t) {
         setState(() {
-          _yPosition += 1;
+          _yPosition.value += 1;
         });
       });
     }
@@ -95,5 +107,21 @@ class _HomeState extends State<Home> {
     timerOnStart.cancel();
     timerOnUp?.cancel();
     timerOnDown?.cancel();
+  }
+
+  void _listenPosition() {
+    if (_yPosition.value + _circleSize >= _screenHeight) {
+      _cancelTimers();
+      setState(() {
+        _yPosition.value = _screenHeight - _circleSize;
+        taps = 0;
+      });
+    } else if (_yPosition.value < 0) {
+      _cancelTimers();
+      setState(() {
+        _yPosition.value = 0;
+        taps = 0;
+      });
+    }
   }
 }
